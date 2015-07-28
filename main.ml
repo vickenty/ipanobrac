@@ -8,7 +8,7 @@ let backend_uri = Uri.of_string "http://localhost:8080"
 let send_request uri =
   Client.get uri
   >>= fun (resp, body) -> Body.to_string body
-  >>= fun body -> return ((resp |> Response.status), body)
+  >>= fun body -> return ((Response.status resp), body)
 
 let make_request path query =
   Uri.with_query (Uri.with_path backend_uri path) query
@@ -26,14 +26,13 @@ let handler_not_found uri meth headers body =
 
 let dispatch uri =
   match Uri.path uri with
-  | "/metrics/find/" -> Some handler_metrics_find
-  | "/render/" -> Some handler_render
-  | _ -> None
+  | "/metrics/find/" -> handler_metrics_find
+  | "/render/" -> handler_render
+  | _ -> handler_not_found
 
 let make_response uri meth headers body =
-  match dispatch uri with
-  | Some handler -> handler uri meth headers body
-  | None -> handler_not_found uri meth headers body
+  let handler = dispatch uri in
+  handler uri meth headers body
 
 let callback ~body _addr req =
   let uri = Request.uri req in
