@@ -8,7 +8,7 @@ let backend_uri = Uri.of_string "http://localhost:8080"
 let send_request uri =
   Client.get uri
   >>= fun (resp, body) -> Body.to_string body
-  >>= fun body -> return ((Response.status resp), body)
+  >>= fun body -> return (Response.status resp, body)
 
 let make_request path query =
   Uri.with_query (Uri.with_path backend_uri path) query
