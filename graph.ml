@@ -38,6 +38,8 @@ let setup ctx (sw: int) (sh: int) (minx, miny, maxx, maxy) =
 let render ~data ~width ~height =
   let surf = Cairo.Image.create Cairo.Image.RGB24 width height in
   let ctx = Cairo.create surf in
+  let () = Cairo.select_font_face ctx "Luculent" in
+  let () = Cairo.set_font_size ctx 12.0 in
   let () = Cairo.set_source_rgb ctx 1. 1. 1. in
   (* this save/restore hack is needed to have 1px stroke with translated path.
      from http://article.gmane.org/gmane.comp.graphics.agg/2518 *)
@@ -47,6 +49,12 @@ let render ~data ~width ~height =
   let () = Cairo.restore ctx in
   let () = Cairo.set_line_width ctx 1. in
   let () = Cairo.stroke ctx in
+  (* add a friendly label to the graph *)
+  let () = Cairo.save ctx in
+  let () = setup ctx width height (bbox data) in
+  let () = Cairo.move_to ctx 1438429260.0 0.020016435130532913 in
+  let () = Cairo.restore ctx in
+  let () = Cairo.show_text ctx "You are here" in
   png_of_surface surf
 
 let data = render
