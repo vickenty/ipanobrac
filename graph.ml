@@ -15,14 +15,12 @@ let png_of_surface surf =
   let () = Cairo.PNG.write_to_stream surf write in
   !buf
 
-let rec bbox_rest (minx, miny, maxx, maxy) data = match data with
-  | [] -> (minx, miny, maxx, maxy)
-  | (x, y) :: ps -> bbox_rest ((min minx x), (min miny y), (max maxx x), (max maxy y)) ps
+let bbox_update (minx, miny, maxx, maxy) (x, y) =
+  (min minx x), (min miny y), (max maxx x), (max maxy y)
 
 let bbox = function
   | [] -> failwith "empty data"
-  | [x, y] -> (x, y, x, y)
-  | (x, y) :: ps -> bbox_rest (x, y, x, y) ps
+  | (x, y) :: xs -> List.fold ~init:(x, y, x, y) ~f:bbox_update xs
 
 let setup ctx (sw: int) (sh: int) (minx, miny, maxx, maxy) =
   let dw = (Float.of_int sw) /. (maxx -. minx) in
