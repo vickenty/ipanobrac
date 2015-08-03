@@ -22,16 +22,25 @@ let bbox = function
   | [] -> failwith "empty data"
   | (x, y) :: xs -> List.fold ~init:(x, y, x, y) ~f:bbox_update xs
 
-let setup ctx (sw: int) (sh: int) (minx, miny, maxx, maxy) =
+let setup (sw: int) (sh: int) (minx, miny, maxx, maxy) =
   let dw = (Float.of_int sw) /. (maxx -. minx) in
   let dh = (Float.of_int sh) /. (maxy -. miny) in
+  let mat = Cairo.Matrix.init_identity () in
   (* move origin to the bottom-left corner of the surface *)
-  let () = Cairo.translate ctx 0. (Float.of_int sh) in
+  let () = Cairo.Matrix.translate mat 0. (Float.of_int sh) in
   (* scale viewport to fit around data, flip y axis *)
-  let () = Cairo.scale ctx dw (-.dh) in
+  let () = Cairo.Matrix.scale mat dw (-.dh) in
   (* move to where the data is *)
-  let () = Cairo.translate ctx (-.minx) (-.miny) in
-  ()
+  let () = Cairo.Matrix.translate mat (-.minx) (-.miny) in
+  mat
+
+let with_matrix ctx mat f =
+  (* this save/restore hack is needed to have 1px stroke with translated path.
+     from http://article.gmane.org/gmane.comp.graphics.agg/2518 *)
+  Cairo.save ctx;
+  Cairo.set_matrix ctx mat;
+  f ();
+  Cairo.restore ctx
 
 let render ~data ~width ~height =
   let surf = Cairo.Image.create Cairo.Image.RGB24 width height in
@@ -39,19 +48,12 @@ let render ~data ~width ~height =
   let () = Cairo.select_font_face ctx "Luculent" in
   let () = Cairo.set_font_size ctx 12.0 in
   let () = Cairo.set_source_rgb ctx 1. 1. 1. in
-  (* this save/restore hack is needed to have 1px stroke with translated path.
-     from http://article.gmane.org/gmane.comp.graphics.agg/2518 *)
-  let () = Cairo.save ctx in
-  let () = setup ctx width height (bbox data) in
-  let () = plot ctx data in
-  let () = Cairo.restore ctx in
   let () = Cairo.set_line_width ctx 1. in
+  let matrix = setup width height (bbox data) in
+  let () = with_matrix ctx matrix (fun () -> plot ctx data) in
   let () = Cairo.stroke ctx in
   (* add a friendly label to the graph *)
-  let () = Cairo.save ctx in
-  let () = setup ctx width height (bbox data) in
-  let () = Cairo.move_to ctx 1438429260.0 0.020016435130532913 in
-  let () = Cairo.restore ctx in
+  let () = with_matrix ctx matrix (fun () -> Cairo.move_to ctx 1438429260.0 0.020016435130532913) in
   let () = Cairo.show_text ctx "You are here" in
   png_of_surface surf
 
